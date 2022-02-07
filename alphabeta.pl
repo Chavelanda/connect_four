@@ -5,22 +5,22 @@
 % values. First finds the possible moves from Pos, finds a good enough
 % position if Pos is not a leaf otherwise it takes the value of the leaf
 % node
-% GoodPos è la migliore mossa, quella da fare
+% GoodPos ï¿½ la migliore mossa, quella da fare
 % Pos: input
 % Depth: input
 % MaxDepth: input
 % Tutte le altre sono output
 alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth, MaxDepth) :-
-  moves(Pos, PosList),
   Depth < MaxDepth,
+  moves(Pos, PosList),
   !,
-  boundedbest(PosList, Alpha, Beta, GoodPos, Val, Depth, MaxDepth).
+  (boundedbest(PosList, Alpha, Beta, GoodPos, Val, Depth, MaxDepth);staticval(Pos, Val)).
 
-alphabeta(Pos, Alpha, Beta, GoodPos, Val, _, _) :-
+alphabeta(Pos, _, _, _, Val, _, _) :-
   staticval(Pos, Val).
-  % Staticval è l'euristica
-  % Pos è input
-  % Val è output
+  % Staticval ï¿½ l'euristica
+  % Pos ï¿½ input
+  % Val ï¿½ output
 
 staticval(Pos, 0).
 
@@ -32,7 +32,7 @@ staticval(Pos, 0).
 boundedbest([Pos|PosList], Alpha, Beta, GoodPos, GoodVal, Depth, MaxDepth) :-
   NewDepth is Depth + 1,
   alphabeta(Pos, Alpha, Beta, _, Val, NewDepth, MaxDepth),
-  goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal).
+  goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal).
 
 % ------------------------------------------------------------------------
 
@@ -40,11 +40,11 @@ boundedbest([Pos|PosList], Alpha, Beta, GoodPos, GoodVal, Depth, MaxDepth) :-
 goodenough([], _, _, Pos, Val, Pos, Val) :- !.
 
 % maximum reached
-goodenough(_, Alpha, Beta, Pos, Val, Pos, Val) :-
+goodenough(_, _, Beta, Pos, Val, Pos, Val) :-
   min_to_move(Pos), Val > Beta, !.
 
 % minimum reached
-goodenough(_, Alpha, Beta, Pos, Val, Pos, Val) :-
+goodenough(_, Alpha, _, Pos, Val, Pos, Val) :-
   max_to_move(Pos), Val < Alpha, !.
 
 goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal) :-
@@ -77,12 +77,3 @@ betterof(Pos, Val, Pos1, Val1, Pos, Val) :-
 betterof(_, _, Pos1, Val1, Pos1, Val1).
 
 % ------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
