@@ -3,6 +3,14 @@
 % [[0,0,1],[0,0,0],[0,0,0]]
 % [0,0,1] � la riga pi� in basso
 
+endOfRow(J) :-
+  J is 7.
+endOfRow(J) :-
+  J is -1.
+
+endOfBoard(I) :-
+  I is 6.
+
 even(N) :- mod(N,2) =:= 0.
 odd(N) :- mod(N,2) =:= 1.
 
@@ -139,3 +147,179 @@ moves(LowerBoard, [BoardI|UpperBoard], I, J, [PosListH|PosListT], Player) :-
 moves(LowerBoard, UpperBoard, I, J, PosList, Player) :-
   NewJ is J + 1,
   moves(LowerBoard, UpperBoard, I, NewJ, PosList, Player).
+
+
+% Heuristic function
+staticval(Pos, Val) :-
+  % LowerBoard, UpperBoard, Row index, Column index,
+  % Heuristic accumulator, Heuristic, Player
+  heuristic([], Pos, 0, 0, 0, MaxVal, 1),
+  heuristic([], Pos, 0, 0, 0, MinVal, -1),
+  Val is MaxVal - MinVal.
+
+
+
+% When the whole board has been examined, we completed the calculation of
+% the heuristic
+heuristic(_, _, I, _, Val, Val, _) :-
+  endOfBoard(I).
+
+% When an entire row has been scanned, we continue the search in the upper row
+heuristic(_, [Row|UpperBoard], I, J, ValAcc, Val, Player) :-
+  endOfRow(J),
+  NewI is I + 1,
+  heuristic(Row, UpperBoard, NewI, 0, ValAcc, Val, Player).
+
+heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player):-
+  nth0(J, Row, Player), % If the disc is not of the right player, then it fails.
+  OpponentPlayer is Player * -1,
+  PreviousJ is J - 1,
+  NewJ is J + 1,
+  % Heuristic for the contiguous row
+  ((J is 0, contiguousRow(Row, J, Player, 1, ValRow));
+  (nth0(PreviousJ, Row, OpponentPlayer), contiguousRow(Row, J, Player, 1, ValRow));
+  (nth0(PreviousJ, Row, 0), contiguousRow(Row, J, Player, 2, ValRow));
+  ValRow is 0
+  ),
+  % Heuristic for the contiguous column
+  % We are considering just the upper board, so the accumulator is already 2
+  ((I is 0, contiguousColumn(UpperBoard, J, Player, 2, ValColumn));
+  (nth0(J, LowerRow, OpponentPlayer), contiguousColumn(UpperBoard, J, Player, 2, ValColumn));
+  (nth0(J, LowerRow, 0), contiguousColumn(UpperBoard, J, Player, 4, ValColumn));
+  ValColumn is 0),
+  % Heuristic for the contiguous right diagonal
+  % We are considering just the upper board, so the accumulator is already 2
+  ((I is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
+  (J is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
+  (nth0(PreviousJ, LowerRow, OpponentPlayer), contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
+  (nth0(PreviousJ, LowerRow, 0), contiguousRightDiagonal(UpperBoard, NewJ, Player, 4, ValRightDiagonal));
+  ValRightDiagonal is 0),
+  % Heuristic for the contiguous left diagonal
+  % We are considering just the upper board, so the accumulator is already 2
+  ((I is 0, contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
+  (endOfRow(NewJ), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
+  (nth0(NewJ, LowerRow, OpponentPlayer), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
+  (nth0(NewJ, LowerRow, 0), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 4, ValLeftDiagonal));
+  ValLeftDiagonal is 0),
+  % Updating accumulator
+  NewValAcc is ValAcc + ValRow + ValColumn + ValRightDiagonal + ValLeftDiagonal,
+  heuristic(LowerRow, [Row|UpperBoard], I, NewJ, NewValAcc, Val, Player).
+
+% If the disc is not of the right player, then we check the next column
+heuristic(LowerRow, UpperBoard, I, J, ValAcc, Val, Player) :-
+  NewJ is J + 1,
+  heuristic(LowerRow, UpperBoard, I, NewJ, ValAcc, Val, Player).
+
+
+% Base case topp, we have four contiguous discs.
+contiguousRow(_, _, _, ValRowAcc, ValRow) :-
+  ValRowAcc is 16,
+  ValRow is +1.0Inf.
+
+% Otherwise, if we reach the end of the board (up),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousRow(_, J, _, _, 0) :-
+  endOfRow(J).
+
+% The same goes when the disc is not owned by the player.
+% If there is an opponent's disc the heuristic becomes 0
+contiguousRow(Row, J, Player, _, 0) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer).
+
+% Otherwise, we accept the heuristic
+contiguousRow(Row, J, _, ValRow, ValRow) :-
+  nth0(J, Row, 0).
+
+contiguousRow(Row, J, Player, ValRowAcc, ValRow) :-
+  nth0(J, Row, Player),
+  NewValRowAcc is ValRowAcc * 2,
+  NewJ is J + 1,
+  contiguousRow(Row, NewJ, Player, NewValRowAcc, ValRow).
+
+
+% Base case topp, we have four contiguous discs.
+contiguousColumn(_, _, _, ValColumnAcc, ValColumn) :-
+  ValColumnAcc is 16,
+  ValColumn is +1.0Inf.
+
+% Otherwise, if we reach the end of the board (up),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousColumn([], _, _, _, 0).
+
+% The same goes when the disc is not owned by the player.
+% If there is an opponent's disc the heuristic becomes 0
+contiguousColumn([Row|_], J, Player, _, 0) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer).
+
+% Otherwise, we accept the heuristic
+contiguousColumn([Row|_], J, _, ValColumn, ValColumn) :-
+  nth0(J, Row, 0).
+
+contiguousColumn([Row|UpperBoard], J, Player, ValColumnAcc, ValColumn) :-
+  nth0(J, Row, Player),
+  NewValColumnAcc is ValColumnAcc * 2,
+  contiguousColumn(UpperBoard, J, Player, NewValColumnAcc, ValColumn).
+
+
+% Base case topp, we have four contiguous discs.
+contiguousRightDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal) :-
+  ValDiagonalAcc is 16,
+  ValDiagonal is +1.0Inf.
+
+% Otherwise, if we reach the end of the board (up),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousRightDiagonal([], _, _, _, 0).
+
+% If we reach the end of the board (side),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousRightDiagonal(_, J, _, _, 0) :-
+  endOfRow(J).
+
+% The same goes when the disc is not owned by the player.
+% If there is an opponent's disc the heuristic becomes 0
+contiguousRightDiagonal([Row|_], J, Player, _, 0) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer).
+
+% Otherwise, we accept the heuristic
+contiguousRightDiagonal([Row|_], J, _, ValDiagonal, ValDiagonal) :-
+  nth0(J, Row, 0).
+
+contiguousRightDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal) :-
+  nth0(J, Row, Player),
+  NewValDiagonalAcc is ValDiagonalAcc * 2,
+  NewJ is J + 1,
+  contiguousRightDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal).
+
+
+% Base case topp, we have four contiguous discs.
+contiguousLeftDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal) :-
+  ValDiagonalAcc is 16,
+  ValDiagonal is +1.0Inf.
+
+% Otherwise, if we reach the end of the board (up),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousLeftDiagonal([], _, _, _, 0).
+
+% If we reach the end of the board (side),
+% the less than 4 discs are not expandable and the heuristic is 0
+contiguousLeftDiagonal(_, J, _, _, 0) :-
+  endOfRow(J).
+
+% The same goes when the disc is not owned by the player.
+% If there is an opponent's disc the heuristic becomes 0
+contiguousLeftDiagonal([Row|_], J, Player, _, 0) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer).
+
+% Otherwise, we accept the heuristic
+contiguousLeftDiagonal([Row|_], J, _, ValDiagonal, ValDiagonal) :-
+  nth0(J, Row, 0).
+
+contiguousLeftDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal) :-
+  nth0(J, Row, Player),
+  NewValDiagonalAcc is ValDiagonalAcc * 2,
+  NewJ is J - 1,
+  contiguousLeftDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal).
