@@ -155,9 +155,15 @@ staticval(Pos, Val) :-
   % Heuristic accumulator, Heuristic, Player
   heuristic([], Pos, 0, 0, 0, MaxVal, 1),
   heuristic([], Pos, 0, 0, 0, MinVal, -1),
-  Val is MaxVal - MinVal.
+  ((MaxVal =:= +1.0Inf, Val is +1.0Inf);
+  (MinVal =:= +1.0Inf, Val is -1.0Inf);
+  (Val is MaxVal - MinVal)).
 
 
+% When the heuristic is infinite
+heuristic(_, _, _, _, Val, Val, _) :-
+  Val =:= +1.0Inf;
+  Val =:= -1.0Inf.
 
 % When the whole board has been examined, we completed the calculation of
 % the heuristic
@@ -176,9 +182,9 @@ heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player):-
   PreviousJ is J - 1,
   NewJ is J + 1,
   % Heuristic for the contiguous row
-  ((J is 0, contiguousRow(Row, J, Player, 1, ValRow));
-  (nth0(PreviousJ, Row, OpponentPlayer), contiguousRow(Row, J, Player, 1, ValRow));
-  (nth0(PreviousJ, Row, 0), contiguousRow(Row, J, Player, 2, ValRow));
+  ((J is 0, contiguousRow(Row, J, Player, 1, ValRow, true));
+  (nth0(PreviousJ, Row, OpponentPlayer), contiguousRow(Row, J, Player, 1, ValRow, true));
+  (nth0(PreviousJ, Row, 0), contiguousRow(Row, J, Player, 2, ValRow, false));
   ValRow is 0
   ),
   % Heuristic for the contiguous column
@@ -189,20 +195,24 @@ heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player):-
   ValColumn is 0),
   % Heuristic for the contiguous right diagonal
   % We are considering just the upper board, so the accumulator is already 2
-  ((I is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
-  (J is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
-  (nth0(PreviousJ, LowerRow, OpponentPlayer), contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal));
-  (nth0(PreviousJ, LowerRow, 0), contiguousRightDiagonal(UpperBoard, NewJ, Player, 4, ValRightDiagonal));
+  ((I is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal, true));
+  (J is 0, contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal, true));
+  (nth0(PreviousJ, LowerRow, OpponentPlayer), contiguousRightDiagonal(UpperBoard, NewJ, Player, 2, ValRightDiagonal, true));
+  (nth0(PreviousJ, LowerRow, 0), contiguousRightDiagonal(UpperBoard, NewJ, Player, 4, ValRightDiagonal, false));
   ValRightDiagonal is 0),
   % Heuristic for the contiguous left diagonal
   % We are considering just the upper board, so the accumulator is already 2
-  ((I is 0, contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
-  (endOfRow(NewJ), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
-  (nth0(NewJ, LowerRow, OpponentPlayer), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal));
-  (nth0(NewJ, LowerRow, 0), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 4, ValLeftDiagonal));
+  ((I is 0, contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal, true));
+  (endOfRow(NewJ), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal, true));
+  (nth0(NewJ, LowerRow, OpponentPlayer), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 2, ValLeftDiagonal, true));
+  (nth0(NewJ, LowerRow, 0), contiguousLeftDiagonal(UpperBoard, PreviousJ, Player, 4, ValLeftDiagonal, false));
   ValLeftDiagonal is 0),
-  % Updating accumulator
-  NewValAcc is ValAcc + ValRow + ValColumn + ValRightDiagonal + ValLeftDiagonal,
+  % Updating accumulator and checking if winning position
+  ((ValRow =:= +1.0Inf, NewValAcc is ValRow);
+  (ValColumn =:= +1.0Inf, NewValAcc is ValColumn);
+  (ValRightDiagonal =:= +1.0Inf, NewValAcc is ValRightDiagonal);
+  (ValLeftDiagonal =:= +1.0Inf, NewValAcc is ValLeftDiagonal);
+  (NewValAcc is ValAcc + ValRow + ValColumn + ValRightDiagonal + ValLeftDiagonal)),
   heuristic(LowerRow, [Row|UpperBoard], I, NewJ, NewValAcc, Val, Player).
 
 % If the disc is not of the right player, then we check the next column
@@ -212,32 +222,49 @@ heuristic(LowerRow, UpperBoard, I, J, ValAcc, Val, Player) :-
 
 
 % Base case topp, we have four contiguous discs.
-contiguousRow(_, _, _, ValRowAcc, ValRow) :-
+contiguousRow(_, _, _, ValRowAcc, ValRow, _) :-
   ValRowAcc is 16,
   ValRow is +1.0Inf.
 
-% Otherwise, if we reach the end of the board (up),
+% Otherwise, if we reach the end of the board (up) and we started with a blocked disc,
 % the less than 4 discs are not expandable and the heuristic is 0
-contiguousRow(_, J, _, _, 0) :-
+contiguousRow(_, J, _, _, 0, StartBlocked) :-
+  endOfRow(J),
+  StartBlocked.
+
+% If at the beginning the disc was not blocked, then the line
+% is still expandable and the heuristic is kept
+contiguousRow(_, J, _, ValRow, ValRow, _) :-
   endOfRow(J).
 
 % The same goes when the disc is not owned by the player.
-% If there is an opponent's disc the heuristic becomes 0
-contiguousRow(Row, J, Player, _, 0) :-
+% If there is an opponent's disc and StartBlocked is true, the heuristic becomes 0
+contiguousRow(Row, J, Player, _, 0, StartBlocked) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer),
+  StartBlocked.
+
+% If the line is not blocked at beginning, it is still expandable on one side.
+% Hence, the heuristic is kept
+contiguousRow(Row, J, Player, ValRow, ValRow, _) :-
   OpponentPlayer is Player * -1,
   nth0(J, Row, OpponentPlayer).
 
-% Otherwise, we accept the heuristic
-contiguousRow(Row, J, _, ValRow, ValRow) :-
-  nth0(J, Row, 0).
+% Otherwise, it means that the line is still expandable on the right side.
+% Therefore, we add the free side bonus
+contiguousRow(Row, J, _, ValRowAcc, ValRow, _) :-
+  nth0(J, Row, 0),
+  ValRow is ValRowAcc * 2.
 
-contiguousRow(Row, J, Player, ValRowAcc, ValRow) :-
+contiguousRow(Row, J, Player, ValRowAcc, ValRow, StartBlocked) :-
   nth0(J, Row, Player),
   NewValRowAcc is ValRowAcc * 2,
   NewJ is J + 1,
-  contiguousRow(Row, NewJ, Player, NewValRowAcc, ValRow).
+  contiguousRow(Row, NewJ, Player, NewValRowAcc, ValRow, StartBlocked).
 
 
+% With the column there is no StartBlocked problem, because a disc always starts
+% blocked in the vertical direction
 % Base case topp, we have four contiguous discs.
 contiguousColumn(_, _, _, ValColumnAcc, ValColumn) :-
   ValColumnAcc is 16,
@@ -253,9 +280,10 @@ contiguousColumn([Row|_], J, Player, _, 0) :-
   OpponentPlayer is Player * -1,
   nth0(J, Row, OpponentPlayer).
 
-% Otherwise, we accept the heuristic
-contiguousColumn([Row|_], J, _, ValColumn, ValColumn) :-
-  nth0(J, Row, 0).
+% Otherwise, we accept the heuristic and we add the free side bonus
+contiguousColumn([Row|_], J, _, ValColumnAcc, ValColumn) :-
+  nth0(J, Row, 0),
+  ValColumn is ValColumnAcc * 2.
 
 contiguousColumn([Row|UpperBoard], J, Player, ValColumnAcc, ValColumn) :-
   nth0(J, Row, Player),
@@ -264,62 +292,85 @@ contiguousColumn([Row|UpperBoard], J, Player, ValColumnAcc, ValColumn) :-
 
 
 % Base case topp, we have four contiguous discs.
-contiguousRightDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal) :-
+contiguousRightDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal, _) :-
   ValDiagonalAcc is 16,
   ValDiagonal is +1.0Inf.
 
-% Otherwise, if we reach the end of the board (up),
+% Otherwise, if we reach the end of the board (up or side) and we started with a blocked disc,
 % the less than 4 discs are not expandable and the heuristic is 0
-contiguousRightDiagonal([], _, _, _, 0).
+contiguousRightDiagonal(UpperBoard, J, _, _, 0, StartBlocked) :-
+  (UpperBoard = []; endOfRow(J)),
+  StartBlocked.
 
-% If we reach the end of the board (side),
-% the less than 4 discs are not expandable and the heuristic is 0
-contiguousRightDiagonal(_, J, _, _, 0) :-
-  endOfRow(J).
+% If at the beginning the disc was not blocked, then the line
+% is still expandable and the heuristic is returned
+contiguousRightDiagonal(UpperBoard, J, _, ValDiagonal, ValDiagonal, _) :-
+  (UpperBoard = []; endOfRow(J)).
+
 
 % The same goes when the disc is not owned by the player.
-% If there is an opponent's disc the heuristic becomes 0
-contiguousRightDiagonal([Row|_], J, Player, _, 0) :-
+% If there is an opponent's disc and we started with a blocked disc the heuristic becomes 0
+contiguousRightDiagonal([Row|_], J, Player, _, 0, StartBlocked) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer),
+  StartBlocked.
+
+% If the line is not blocked at beginning, it is still expandable on one side.
+% Hence, the heuristic is kept
+contiguousRightDiagonal([Row|_], J, Player, ValDiagonal, ValDiagonal, _) :-
   OpponentPlayer is Player * -1,
   nth0(J, Row, OpponentPlayer).
 
-% Otherwise, we accept the heuristic
-contiguousRightDiagonal([Row|_], J, _, ValDiagonal, ValDiagonal) :-
-  nth0(J, Row, 0).
+% Otherwise, it means that the line is still expandable on the upper-right side.
+% Therefore, we add the free side bonus
+contiguousRightDiagonal([Row|_], J, _, ValDiagonalAcc, ValDiagonal, _) :-
+  nth0(J, Row, 0),
+  ValDiagonal is ValDiagonalAcc * 2.
 
-contiguousRightDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal) :-
+contiguousRightDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal, StartBlocked) :-
   nth0(J, Row, Player),
   NewValDiagonalAcc is ValDiagonalAcc * 2,
   NewJ is J + 1,
-  contiguousRightDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal).
+  contiguousRightDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal, StartBlocked).
 
 
 % Base case topp, we have four contiguous discs.
-contiguousLeftDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal) :-
+contiguousLeftDiagonal(_, _, _, ValDiagonalAcc, ValDiagonal, _) :-
   ValDiagonalAcc is 16,
   ValDiagonal is +1.0Inf.
 
-% Otherwise, if we reach the end of the board (up),
+% Otherwise, if we reach the end of the board (up or side) and we started with a blocked disc,
 % the less than 4 discs are not expandable and the heuristic is 0
-contiguousLeftDiagonal([], _, _, _, 0).
+contiguousLeftDiagonal(UpperBoard, J, _, _, 0, StartBlocked) :-
+  (UpperBoard = []; endOfRow(J)),
+  StartBlocked.
 
-% If we reach the end of the board (side),
-% the less than 4 discs are not expandable and the heuristic is 0
-contiguousLeftDiagonal(_, J, _, _, 0) :-
-  endOfRow(J).
+% If at the beginning the disc was not blocked, then the line
+% is still expandable and the heuristic is returned
+contiguousLeftDiagonal(UpperBoard, J, _, ValDiagonal, ValDiagonal, _) :-
+  (UpperBoard = []; endOfRow(J)).
 
 % The same goes when the disc is not owned by the player.
-% If there is an opponent's disc the heuristic becomes 0
-contiguousLeftDiagonal([Row|_], J, Player, _, 0) :-
+% If there is an opponent's disc and we started with a blocked disc the heuristic becomes 0
+contiguousLeftDiagonal([Row|_], J, Player, _, 0, StartBlocked) :-
+  OpponentPlayer is Player * -1,
+  nth0(J, Row, OpponentPlayer),
+  StartBlocked.
+
+% If the line is not blocked at beginning, it is still expandable on one side.
+% Hence, the heuristic is kept
+contiguousLeftDiagonal([Row|_], J, Player, ValDiagonal, ValDiagonal, _) :-
   OpponentPlayer is Player * -1,
   nth0(J, Row, OpponentPlayer).
 
-% Otherwise, we accept the heuristic
-contiguousLeftDiagonal([Row|_], J, _, ValDiagonal, ValDiagonal) :-
-  nth0(J, Row, 0).
+% Otherwise, it means that the line is still expandable on the upper-left side.
+% Therefore, we add the free side bonus
+contiguousLeftDiagonal([Row|_], J, _, ValDiagonalAcc, ValDiagonal, _) :-
+  nth0(J, Row, 0),
+  ValDiagonal is ValDiagonalAcc * 2.
 
-contiguousLeftDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal) :-
+contiguousLeftDiagonal([Row|UpperBoard], J, Player, ValDiagonalAcc, ValDiagonal, StartBlocked) :-
   nth0(J, Row, Player),
   NewValDiagonalAcc is ValDiagonalAcc * 2,
   NewJ is J - 1,
-  contiguousLeftDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal).
+  contiguousLeftDiagonal(UpperBoard, NewJ, Player, NewValDiagonalAcc, ValDiagonal, StartBlocked).
