@@ -12,9 +12,10 @@ end_of_row(J) :-
 end_of_row(J) :-
   J is -1.
 
-
 end_of_board(I) :-
   I is 6.
+
+
 
 
 % Base case
@@ -41,22 +42,24 @@ min_to_move(Pos) :-
   \+ max_to_move(Pos).
 
 
+
+
 % If the game is over, no move is allowed
 % The game is over if the opponent has won in the previous turn
-moves(Pos, []) :-
-  (max_to_move(Pos), end_of_game([], Pos, 0, 0, DiscsInLine, -1));
-  (min_to_move(Pos), end_of_game([], Pos, 0, 0, DiscsInLine, 1).
-
 % Relates a position (Pos) to all the reachable positions (PosList) by executing valid moves
 % Max must move
 moves(Pos, PosList) :-
-  max_to_move(Pos), !,
-  moves([], Pos, 0, 0, PosList, 1).
+  max_to_move(Pos),
+  end_of_game([], Pos, 0, 0, 0, -1, GameEnded),
+  ((GameEnded is 0, moves([], Pos, 0, 0, PosList, 1)); PosList = []).
 
 % Min must move
 moves(Pos, PosList) :-
-  min_to_move(Pos), !,
-  moves([], Pos, 0, 0, PosList, -1).
+  min_to_move(Pos),
+  end_of_game([], Pos, 0, 0, 0, 1, GameEnded),
+  ((GameEnded is 0, moves([], Pos, 0, 0, PosList, -1)); PosList = []).
+
+
 
 
 % Base case
@@ -92,25 +95,104 @@ moves(LowerBoard, UpperBoard, I, J, PosList, Player) :-
   moves(LowerBoard, UpperBoard, I, NewJ, PosList, Player).
 
 
+
+
 % Base case
 % If four discs of the right player are found in a line, then the game is over
-end_of_game(_, _, _, _, 4, 1).
-end_of_game(_, _, _, _, -4, -1).
+end_of_game(_, _, _, _, DiscsInLine, _, 1) :-
+  DiscsInLine >= 4.
 
 % Base case
 % The whole board has been examined and the game is not over
-end_of_game(_, _, I, _, _, _) :-
-  end_of_board(I),
-  false.
+end_of_game(_, _, I, _, _, _, 0) :-
+  end_of_board(I).
 
 % When an entire row has been scanned, we continue the search in the upper row
-end_of_game(_, [Row|UpperBoard], I, J, DiscsInLine, Player) :-
+end_of_game(_, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   end_of_row(J),
   NewI is I + 1,
-  end_of_game(Row, UpperBoard, NewI, 0, DiscsInLine, Player).
+  end_of_game(Row, UpperBoard, NewI, 0, 0, Player, GameEnded).
 
-end_of_game(LowerRow, [Row|UpperBoard], I, J, DiscsInLine, Player) :-
-  nth0(J, Row, Player), % If the disc is not of the right player, then it fails.
-  OpponentPlayer is Player * -1,
+% If the disc is not of the right player, then we check the next column
+end_of_game(LowerRow, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
+  \+ nth0(J, Row, Player),
+  NewJ is J + 1,
+  end_of_game(LowerRow, [Row|UpperBoard], I, NewJ, 0, Player, GameEnded).
+
+end_of_game(LowerRow, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   PreviousJ is J - 1,
   NewJ is J + 1,
+
+  ((nth0(PreviousJ, Row, Player), DiscsInRow is 0); contiguous_row(Row, J, Player, 0, DiscsInRow, _)),
+  ((nth0(J, LowerRow, Player), DiscsInColumn is 0); contiguous_column([Row|UpperBoard], J, Player, 0, DiscsInColumn, _)),
+  ((nth0(PreviousJ, LowerRow, Player), DiscsInRightDiagonal is 0); contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInRightDiagonal, _, 1)),
+  ((nth0(NewJ, LowerRow, Player), DiscsInLeftDiagonal is 0); contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInLeftDiagonal, _, -1)),
+
+  % We keep the longest contiguous line
+  ((DiscsInColumn > DiscsInRow, Max1 is DiscsInColumn); Max1 is DiscsInRow),
+  ((DiscsInRightDiagonal > Max1, Max2 is DiscsInRightDiagonal); Max2 is Max1),
+  ((DiscsInLeftDiagonal > Max2, DiscsInLine is DiscsInLeftDiagonal); DiscsInLine is Max2),
+
+  end_of_game(LowerRow, [Row|UpperBoard], I, NewJ, DiscsInLine, Player, GameEnded).
+
+
+
+
+% Base case
+% If we reach the end of the board (side) or if we find an opponent's disc,
+% then the contiguous line is interrupted and it is blocked at the end.
+contiguous_row(Row, J, Player, DiscsInLine, DiscsInLine, 1) :-
+  OpponentPlayer is Player * -1,
+  (end_of_row(J); nth0(J, Row, OpponentPlayer)).
+
+% Base case
+% If we find a free slot, the contiguous row is over and the end is free
+contiguous_row(Row, J, _, DiscsInLine, DiscsInLine, 0) :-
+  nth0(J, Row, 0).
+
+contiguous_row(Row, J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked) :-
+  nth0(J, Row, Player),
+  NewDiscsInLineAcc is DiscsInLineAcc + 1,
+  NewJ is J + 1,
+  contiguous_row(Row, NewJ, Player, NewDiscsInLineAcc, DiscsInLine, EndBlocked).
+
+
+
+
+% Base case
+% If we reach the end of the board (up) or if we find an opponent's disc,
+% then the contiguous line is interrupted and it is blocked at the end.
+contiguous_column([Row|UpperBoard], J, Player, DiscsInLine, DiscsInLine, 1) :-
+  OpponentPlayer is Player * -1,
+  (nth0(J, Row, OpponentPlayer); [Row|UpperBoard] = []).
+
+% Base case
+% If we find a free slot, the contiguous column is over and the end is free
+contiguous_column([Row|_], J, _, DiscsInLine, DiscsInLine, 0) :-
+  nth0(J, Row, 0).
+
+contiguous_column([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked) :-
+  nth0(J, Row, Player),
+  NewDiscsInLineAcc is DiscsInLineAcc + 1,
+  contiguous_column(UpperBoard, J, Player, NewDiscsInLineAcc, DiscsInLine, EndBlocked).
+
+
+
+
+% Base case
+% If we reach the end of the board (up or side) or if we find an opponent's disc,
+% then the contiguous line is interrupted and it is blocked at the end.
+contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLine, DiscsInLine, 1, _) :-
+  OpponentPlayer is Player * -1,
+  (nth0(J, Row, OpponentPlayer); end_of_row(J); [Row|UpperBoard] = []).
+
+% Base case
+% If we find a free slot, the contiguous diagonal is over and the end is free
+contiguous_diagonal([Row|_], J, _, DiscsInLine, DiscsInLine, 0, _) :-
+  nth0(J, Row, 0).
+
+contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked, Direction) :-
+  nth0(J, Row, Player),
+  NewDiscsInLineAcc is DiscsInLineAcc + 1,
+  NewJ is J + Direction,
+  contiguous_diagonal(UpperBoard, NewJ, Player, NewDiscsInLineAcc, DiscsInLine, EndBlocked, Direction).

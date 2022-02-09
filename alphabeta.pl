@@ -14,8 +14,9 @@
 alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth, MaxDepth) :-
   Depth < MaxDepth,
   moves(Pos, PosList),
+  NewDepth is Depth + 1,
   !,
-  (boundedbest(PosList, Alpha, Beta, GoodPos, Val, Depth, MaxDepth);staticval(Pos, Val)).
+  boundedbest(PosList, Alpha, Beta, GoodPos, Val, NewDepth, MaxDepth); staticval(Pos, Val).
 
 alphabeta(Pos, _, _, _, Val, _, _) :-
   staticval(Pos, Val).
@@ -29,26 +30,21 @@ alphabeta(Pos, _, _, _, Val, _, _) :-
 % that the backed-up value Val of GoodPos is a good enough approximation
 % with respect to Alpha and Beta
 boundedbest([Pos|PosList], Alpha, Beta, GoodPos, GoodVal, Depth, MaxDepth) :-
-  NewDepth is Depth + 1,
-  alphabeta(Pos, Alpha, Beta, _, Val, NewDepth, MaxDepth),
-  goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal).
+  alphabeta(Pos, Alpha, Beta, _, Val, Depth, MaxDepth),
+  goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxDepth).
 
 % ------------------------------------------------------------------------
 
 % no other candidates
-goodenough([], _, _, Pos, Val, Pos, Val) :- !.
+goodenough([], _, _, Pos, Val, Pos, Val, _, _) :- !.
 
-% maximum reached
-goodenough(_, _, Beta, Pos, Val, Pos, Val) :-
-  min_to_move(Pos), Val > Beta, !.
+goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _, _) :-
+  min_to_move(Pos), Val > Beta, !; % maximum reached
+  max_to_move(Pos), Val < Alpha, !. % minimum reached
 
-% minimum reached
-goodenough(_, Alpha, _, Pos, Val, Pos, Val) :-
-  max_to_move(Pos), Val < Alpha, !.
-
-goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal) :-
+goodenough(PosList, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxDepth) :-
   newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta),
-  boundedbest(PosList, NewAlpha, NewBeta, Pos1, Val1),
+  boundedbest(PosList, NewAlpha, NewBeta, Pos1, Val1, Depth, MaxDepth),
   betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal).
 
 % ------------------------------------------------------------------------
