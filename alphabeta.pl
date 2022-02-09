@@ -1,5 +1,6 @@
 % Alpha beta relation.
 :- consult(connect_four).
+:- consult(heuristic).
 
 % GoodPos is a possible next position that satisfies the alpha beta
 % values. First finds the possible moves from Pos, finds a good enough
@@ -21,8 +22,6 @@ alphabeta(Pos, _, _, _, Val, _, _) :-
   % Staticval � l'euristica
   % Pos � input
   % Val � output
-
-staticval(Pos, 0).
 
 % ------------------------------------------------------------------------
 
@@ -68,10 +67,10 @@ newbounds(Alpha, Beta, _, _, Alpha, Beta).
 
 % ------------------------------------------------------------------------
 
-betterof(Pos, Val, Pos1, Val1, Pos, Val) :-
+betterof(Pos, Val, _, Val1, Pos, Val) :-
   min_to_move(Pos), Val > Val1, !.
 
-betterof(Pos, Val, Pos1, Val1, Pos, Val) :-
+betterof(Pos, Val, _, Val1, Pos, Val) :-
   max_to_move(Pos), Val < Val1, !.
 
 betterof(_, _, Pos1, Val1, Pos1, Val1).
