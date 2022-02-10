@@ -68,8 +68,10 @@ heuristic_row(Row, J, PreviousJ, Player, OpponentPlayer, ValRow) :-
 
   ((DiscsInLine >= 4, ValRow is +1.0Inf);
   (Blocked is 2, ValRow is 0);
-  (Blocked is 1, ValRow is 2**(DiscsInLine + 1));
-  (Blocked is 0, ValRow is 2**(DiscsInLine + 2))).
+%  (Blocked is 1, ValRow is 2**(DiscsInLine + 1));
+%  (Blocked is 0, ValRow is 2**(DiscsInLine + 2))).
+  (Blocked is 1, ValRow is 2**(DiscsInLine));
+  (Blocked is 0, ValRow is 2**(DiscsInLine))).
 
 
 
@@ -83,7 +85,8 @@ heuristic_column(UpperBoard, LowerRow, I, J, Player, OpponentPlayer, ValColumn) 
 
   ((DiscsInLine >= 4, ValColumn is +1.0Inf);
   (EndBlocked is 1, ValColumn is 0);
-  (EndBlocked is 0, ValColumn is 2**(DiscsInLine + 1))).
+%  (EndBlocked is 0, ValColumn is 2**(DiscsInLine + 1))).
+  (EndBlocked is 0, ValColumn is 2**(DiscsInLine))).
 
 
 
@@ -100,8 +103,10 @@ heuristic_diagonal(UpperBoard, LowerRow, I, J, CheckJ, Direction, Player, Oppone
 
   ((DiscsInLine >= 4, ValDiagonal is +1.0Inf);
   (Blocked is 2, ValDiagonal is 0);
-  (Blocked is 1, ValDiagonal is 2**(DiscsInLine + 1));
-  (Blocked is 0, ValDiagonal is 2**(DiscsInLine + 2))).
+%  (Blocked is 1, ValDiagonal is 2**(DiscsInLine + 1));
+%  (Blocked is 0, ValDiagonal is 2**(DiscsInLine + 2))).
+  (Blocked is 1, ValDiagonal is 2**(DiscsInLine));
+  (Blocked is 0, ValDiagonal is 2**(DiscsInLine))).
 
 
 
