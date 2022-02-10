@@ -158,13 +158,17 @@ contiguous_row(Row, J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked) :-
 
 
 
-
 % Base case
-% If we reach the end of the board (up) or if we find an opponent's disc,
+% If we reach the end of the board (up)
 % then the contiguous line is interrupted and it is blocked at the end.
-contiguous_column([Row|UpperBoard], J, Player, DiscsInLine, DiscsInLine, 1) :-
+contiguous_column([], _, _, DiscsInLine, DiscsInLine, 1).
+  % Base case
+
+% If we find an opponent's disc,
+% then the contiguous line is interrupted and it is blocked at the end.
+contiguous_column([Row|_], J, Player, DiscsInLine, DiscsInLine, 1) :-
   OpponentPlayer is Player * -1,
-  (nth0(J, Row, OpponentPlayer); [Row|UpperBoard] = []).
+  nth0(J, Row, OpponentPlayer).
 
 % Base case
 % If we find a free slot, the contiguous column is over and the end is free
@@ -178,13 +182,17 @@ contiguous_column([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndB
 
 
 
+% Base case
+% If we reach the end of the board (up)
+% then the contiguous line is interrupted and it is blocked at the end.
+contiguous_diagonal([], _, _, DiscsInLine, DiscsInLine, 1, _).
 
 % Base case
 % If we reach the end of the board (up or side) or if we find an opponent's disc,
 % then the contiguous line is interrupted and it is blocked at the end.
-contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLine, DiscsInLine, 1, _) :-
+contiguous_diagonal([Row|_], J, Player, DiscsInLine, DiscsInLine, 1, _) :-
   OpponentPlayer is Player * -1,
-  (nth0(J, Row, OpponentPlayer); end_of_row(J); [Row|UpperBoard] = []).
+  (nth0(J, Row, OpponentPlayer); end_of_row(J)).
 
 % Base case
 % If we find a free slot, the contiguous diagonal is over and the end is free

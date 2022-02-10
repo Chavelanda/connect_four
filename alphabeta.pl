@@ -11,19 +11,16 @@
 % Depth: input
 % MaxDepth: input
 % Tutte le altre sono output
+% and has precedence on or
 alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth, MaxDepth) :-
   Depth < MaxDepth,
   moves(Pos, PosList),
   NewDepth is Depth + 1,
   !,
-  boundedbest(PosList, Alpha, Beta, GoodPos, Val, NewDepth, MaxDepth); staticval(Pos, Val).
+  (boundedbest(PosList, Alpha, Beta, GoodPos, Val, NewDepth, MaxDepth); staticval(Pos, Val)).
 
 alphabeta(Pos, _, _, _, Val, _, _) :-
   staticval(Pos, Val).
-  % Staticval � l'euristica
-  % Pos � input
-  % Val � output
-
 % ------------------------------------------------------------------------
 
 % Finds a good enough position (known as GoodPos) in the list Poslist so
