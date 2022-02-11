@@ -103,9 +103,12 @@ end_of_game(_, _, _, _, DiscsInLine, _, 1) :-
   DiscsInLine >= 4.
 
 % Base case
-% The whole board has been examined and the game is not over
-end_of_game(_, _, I, _, _, _, 0) :-
-  end_of_board(I).
+% The whole board has been examined and a column is still free, then the game is not over
+% If all columns are full, then the game is over
+end_of_game(LowerRow, _, I, _, _, _, GameEnded) :-
+  end_of_board(I),
+  ((member(0, LowerRow), GameEnded is 0);
+  (\+ member(0, LowerRow), GameEnded is 1)).
 
 % When an entire row has been scanned, we continue the search in the upper row
 end_of_game(_, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
