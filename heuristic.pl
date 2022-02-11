@@ -1,9 +1,10 @@
+% Heuristic
+
 :- consult(connect_four).
 
-% Heuristic function
+ % Calculates the heuristic of the position by evaluating max and min positions
+ % and subtracting them
 staticval(Pos, Val) :-
-  % LowerBoard, UpperBoard, Row index, Column index,
-  % Heuristic accumulator, Heuristic, Player
   heuristic([], Pos, 0, 0, 0, MaxVal, 1),
   heuristic([], Pos, 0, 0, 0, MinVal, -1),
   ((MaxVal =:= +1.0Inf, Val is +1.0Inf);
@@ -35,6 +36,11 @@ heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player) :-
   NewJ is J + 1,
   heuristic(LowerRow, [Row|UpperBoard], I, NewJ, ValAcc, Val, Player).
 
+% If there is a disc of the right player, then the heuristic of the
+% contiguous lines (in all directions) is calculated (only if it had
+% not been calculated before)
+% Parameters: LowerBoard, UpperBoard, Row index, Column index,
+% Heuristic accumulator, Heuristic, Player
 heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player) :-
   OpponentPlayer is Player * -1,
   PreviousJ is J - 1,
@@ -59,10 +65,22 @@ heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player) :-
 
 % Heuristic for the contiguous row
 heuristic_row(Row, J, PreviousJ, Player, OpponentPlayer, ValRow) :-
-  ((J is 0, StartBlocked is 1, contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
-  (nth0(PreviousJ, Row, OpponentPlayer), StartBlocked is 1, contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
-  (nth0(PreviousJ, Row, 0), StartBlocked is 0, contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
-  (nth0(PreviousJ, Row, Player), DiscsInLine is 0, StartBlocked is 1, EndBlocked is 1)),
+  ((J is 0,
+  StartBlocked is 1,
+  contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (nth0(PreviousJ, Row, OpponentPlayer),
+  StartBlocked is 1,
+  contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (nth0(PreviousJ, Row, 0),
+  StartBlocked is 0,
+  contiguous_row(Row, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (nth0(PreviousJ, Row, Player),
+  DiscsInLine is 0,
+  StartBlocked is 1,
+  EndBlocked is 1)),
 
   Blocked is StartBlocked + EndBlocked,
 
@@ -78,10 +96,17 @@ heuristic_row(Row, J, PreviousJ, Player, OpponentPlayer, ValRow) :-
 
 % Heuristic for the contiguous column
 heuristic_column(UpperBoard, LowerRow, I, J, Player, OpponentPlayer, ValColumn) :-
-  ((I is 0, contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
-  (nth0(J, LowerRow, OpponentPlayer), contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
-  (nth0(J, LowerRow, 0), contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
-  (DiscsInLine is 0, EndBlocked is 1)),
+  ((I is 0,
+  contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (nth0(J, LowerRow, OpponentPlayer),
+  contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (nth0(J, LowerRow, 0),
+  contiguous_column(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked));
+
+  (DiscsInLine is 0,
+  EndBlocked is 1)),
 
   ((DiscsInLine >= 4, ValColumn is +1.0Inf);
   (EndBlocked is 1, ValColumn is 0);
@@ -91,13 +116,28 @@ heuristic_column(UpperBoard, LowerRow, I, J, Player, OpponentPlayer, ValColumn) 
 
 
 
-% Heuristic for the contiguous left diagonal
+% Heuristic for the contiguous diagonal (left or right - defined by
+% Direction together with CheckJ)
 heuristic_diagonal(UpperBoard, LowerRow, I, J, CheckJ, Direction, Player, OpponentPlayer, ValDiagonal) :-
-  ((I is 0, StartBlocked is 1, contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
-  (end_of_row(CheckJ), StartBlocked is 1, contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
-  (nth0(CheckJ, LowerRow, OpponentPlayer), StartBlocked is 1, contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
-  (nth0(CheckJ, LowerRow, 0), StartBlocked is 0, contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
-  (DiscsInLine is 0, StartBlocked is 1, EndBlocked is 1)),
+  ((I is 0,
+  StartBlocked is 1,
+  contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
+
+  (end_of_row(CheckJ),
+  StartBlocked is 1,
+  contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
+
+  (nth0(CheckJ, LowerRow, OpponentPlayer),
+  StartBlocked is 1,
+  contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
+
+  (nth0(CheckJ, LowerRow, 0),
+  StartBlocked is 0,
+  contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));
+
+  (DiscsInLine is 0,
+  StartBlocked is 1,
+  EndBlocked is 1)),
 
   Blocked is StartBlocked + EndBlocked,
 
@@ -107,11 +147,3 @@ heuristic_diagonal(UpperBoard, LowerRow, I, J, CheckJ, Direction, Player, Oppone
 %  (Blocked is 0, ValDiagonal is 2**(DiscsInLine + 2))).
   (Blocked is 1, ValDiagonal is 2**(DiscsInLine));
   (Blocked is 0, ValDiagonal is 2**(DiscsInLine))).
-
-
-
-heuristic_list([], []).
-
-heuristic_list([HP|TP], [HH|TH]) :-
-  staticval(HP, HH),
-  heuristic_list(TP, TH).

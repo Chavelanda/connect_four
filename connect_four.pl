@@ -3,8 +3,7 @@
 :- consult(utils).
 
 % [[0,0,1],[0,0,0],[0,0,0]] This is an example of a mini board
-% [0,0,1] This is the lowest row of the mini board
-
+% [0,0,1]  is the lowest row of the mini board
 
 end_of_row(J) :-
   J is 7.
@@ -44,9 +43,11 @@ min_to_move(Pos) :-
 
 
 
+% Moves relates a position (Pos) to all the reachable
+% positions (PosList) by executing valid moves
 % If the game is over, no move is allowed
 % The game is over if the opponent has won in the previous turn
-% Relates a position (Pos) to all the reachable positions (PosList) by executing valid moves
+% or if the board has been filled entirely
 % Max must move
 moves(Pos, PosList) :-
   max_to_move(Pos),
@@ -64,7 +65,7 @@ moves(Pos, PosList) :-
 
 % Base case
 % Stop when all the rows have been examined
-% There no more reachable positions
+% There are no more reachable positions
 moves(_, _, I, _, [], _) :-
   end_of_board(I).
 
@@ -76,14 +77,17 @@ moves(LowerBoard, [Row|UpperBoard], I, J, PosList, Player) :-
   NewI is I + 1,
   moves(NewLowerBoard, UpperBoard, NewI, 0, PosList, Player).
 
-% If the examined position is empty (no disc => 0) and we are in the first row, or if the
-% examined position is empty and the lower position is not empty, then we can
-% play a disc in the examined position.
+% If the examined position is empty (no disc => 0) and
+% we are in the first row, or if the examined position
+% is empty and the lower position is not empty,
+% then we can play a disc in the examined position.
 % The parameters are: Lower part the board, [Row examined|Upper part of the board],
 % Row index, Column index, Possible new positions list, Player
 moves(LowerBoard, [Row|UpperBoard], I, J, [PosListH|PosListT], Player) :-
   ((I is 0, nth0(J, Row, 0));
-  (nth0(J, Row, 0), ICheck is I - 1, matrix(LowerBoard, ICheck, J, LowerVal), LowerVal =\= 0)),
+  (nth0(J, Row, 0), ICheck is I - 1,
+  matrix(LowerBoard, ICheck, J, LowerVal),
+  LowerVal =\= 0)),
   replace(Row, 0, J, Player, PosListHRow),
   append(LowerBoard, [PosListHRow|UpperBoard], PosListH),
   NewJ is J + 1,
@@ -98,19 +102,22 @@ moves(LowerBoard, UpperBoard, I, J, PosList, Player) :-
 
 
 % Base case
-% If four discs of the right player are found in a line, then the game is over
+% If four discs of the right player are found in a line,
+% then the game is over
 end_of_game(_, _, _, _, DiscsInLine, _, 1) :-
   DiscsInLine >= 4.
 
 % Base case
-% The whole board has been examined and a column is still free, then the game is not over
+% The whole board has been examined.
+% If a column is still free, then the game is not over
 % If all columns are full, then the game is over
 end_of_game(LowerRow, _, I, _, _, _, GameEnded) :-
   end_of_board(I),
   ((member(0, LowerRow), GameEnded is 0);
   (\+ member(0, LowerRow), GameEnded is 1)).
 
-% When an entire row has been scanned, we continue the search in the upper row
+% When an entire row has been scanned,
+% we continue the search in the upper row
 end_of_game(_, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   end_of_row(J),
   NewI is I + 1,
@@ -122,14 +129,20 @@ end_of_game(LowerRow, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   NewJ is J + 1,
   end_of_game(LowerRow, [Row|UpperBoard], I, NewJ, 0, Player, GameEnded).
 
+% If the disc is of the right player, then we count the number of
+% contiguous discs in all valid directions and we keep the highest.
 end_of_game(LowerRow, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   PreviousJ is J - 1,
   NewJ is J + 1,
 
-  ((nth0(PreviousJ, Row, Player), DiscsInRow is 0); contiguous_row(Row, J, Player, 0, DiscsInRow, _)),
-  ((nth0(J, LowerRow, Player), DiscsInColumn is 0); contiguous_column([Row|UpperBoard], J, Player, 0, DiscsInColumn, _)),
-  ((nth0(PreviousJ, LowerRow, Player), DiscsInRightDiagonal is 0); contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInRightDiagonal, _, 1)),
-  ((nth0(NewJ, LowerRow, Player), DiscsInLeftDiagonal is 0); contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInLeftDiagonal, _, -1)),
+  ((nth0(PreviousJ, Row, Player), DiscsInRow is 0);
+  contiguous_row(Row, J, Player, 0, DiscsInRow, _)),
+  ((nth0(J, LowerRow, Player), DiscsInColumn is 0);
+  contiguous_column([Row|UpperBoard], J, Player, 0, DiscsInColumn, _)),
+  ((nth0(PreviousJ, LowerRow, Player), DiscsInRightDiagonal is 0);
+  contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInRightDiagonal, _, 1)),
+  ((nth0(NewJ, LowerRow, Player), DiscsInLeftDiagonal is 0);
+  contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInLeftDiagonal, _, -1)),
 
   % We keep the longest contiguous line
   ((DiscsInColumn > DiscsInRow, Max1 is DiscsInColumn); Max1 is DiscsInRow),
@@ -161,6 +174,7 @@ contiguous_row(Row, J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked) :-
 
 
 
+
 % Base case
 % If we reach the end of the board (up)
 % then the contiguous line is interrupted and it is blocked at the end.
@@ -185,6 +199,7 @@ contiguous_column([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndB
 
 
 
+
 % Base case
 % If we reach the end of the board (up)
 % then the contiguous line is interrupted and it is blocked at the end.
@@ -202,6 +217,7 @@ contiguous_diagonal([Row|_], J, Player, DiscsInLine, DiscsInLine, 1, _) :-
 contiguous_diagonal([Row|_], J, _, DiscsInLine, DiscsInLine, 0, _) :-
   nth0(J, Row, 0).
 
+% Direction stands for the direction of the diagonal (right=+1 or left=-1)
 contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked, Direction) :-
   nth0(J, Row, Player),
   NewDiscsInLineAcc is DiscsInLineAcc + 1,

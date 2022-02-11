@@ -1,15 +1,18 @@
+% Game
+
 :- consult(alphabeta).
 :- consult(connect_four).
 :- consult(utils).
 
 % Entry point
 game() :-
-  game([[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]], 1, 0).
+  game([[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]], 1, 0).
 
 % Base case
 % Always draws the board
 % If the game is over say who won
-% Do we know if the game is over?
+% If not, let's make a move!
 game(Pos, Player, 0) :-
   draw_board(Pos, 0),
   write('  0123456\n\n'),
@@ -18,7 +21,6 @@ game(Pos, Player, 0) :-
   ((GameEnded is 1, game(Pos, 0, 1));
   (GameEnded is 0, game(Pos, Player, 1))).
 
-
 % The game is over
 game(Pos, 0, 1) :-
   staticval(Pos, Val),
@@ -26,10 +28,10 @@ game(Pos, 0, 1) :-
   (Val is 1.0Inf, write('You woooooon, sbamm!'));
   (Val is -1.0Inf, write('Auch, you lose :('))).
 
-
 % Human plays
 game(Pos, 1, 1) :-
-  write('Write the column in which you want to put your disc (index starts at 0)'),
+  write('Write the column in which you want to put your disc
+  (index starts at 0)'),
   read(Column),
   check_valid_move(Pos, Column),
   generate_pos(Pos, Column, NewPos),
@@ -44,6 +46,8 @@ game(Pos, -1, 1) :-
 
 
 
+
+% Function to draw the Connect Four board
 draw_board([Row|[]], _) :-
   write('5|'),
   draw_row(Row),
@@ -59,6 +63,8 @@ draw_board([Row|UpperBoard], I) :-
 
 
 
+
+% Function to draw a Connect Four row
 draw_row([]).
 
 draw_row([Disc|Row]) :-
@@ -70,6 +76,7 @@ draw_row([Disc|Row]) :-
 
 
 
+% Functions that checks if the input of the human player is valid
 check_valid_move(Pos, Column) :-
   integer(Column),
   Column >= 0,
@@ -78,15 +85,21 @@ check_valid_move(Pos, Column) :-
   Disc is 0.
 
 check_valid_move(Pos, _) :-
-  write('!Warning! Your column is not a valid option. Please try with another one.'),
+  write('\n!Warning! Your column is not a valid option. Please try
+  with another one.\n'),
   game(Pos, 1, 1).
 
 
 
 
+% Function that relates a position and a column in which the new
+% disc must be inserted to the new position
 generate_pos(Pos, Column, NewPos) :-
   generate_pos([], Pos, 0, Column, NewPos).
 
+% Base case
+% The first free slot in the right column has been reached
+% and the new position is found.
 generate_pos(LowerBoard, [Row|UpperBoard], _, Column, NewPos) :-
   nth0(Column, Row, 0),
   replace(Row, 0, Column, 1, NewRow),

@@ -1,3 +1,5 @@
+% Test
+
 :- consult(alphabeta).
 
 test_heuristic() :-
