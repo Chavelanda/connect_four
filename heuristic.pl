@@ -47,9 +47,12 @@ heuristic(LowerRow, [Row|UpperBoard], I, J, ValAcc, Val, Player) :-
   NewJ is J + 1,
 
   heuristic_row(Row, J, PreviousJ, Player, OpponentPlayer, ValRow),
-  heuristic_column([Row|UpperBoard], LowerRow, I, J, Player, OpponentPlayer, ValColumn),
-  heuristic_diagonal([Row|UpperBoard], LowerRow, I, J, PreviousJ, 1, Player, OpponentPlayer, ValRightDiagonal),
-  heuristic_diagonal([Row|UpperBoard], LowerRow, I, J, NewJ, -1, Player, OpponentPlayer, ValLeftDiagonal),
+  heuristic_column([Row|UpperBoard], LowerRow, I, J, Player,
+                   OpponentPlayer, ValColumn),
+  heuristic_diagonal([Row|UpperBoard], LowerRow, I, J, PreviousJ, 1,
+                     Player, OpponentPlayer, ValRightDiagonal),
+  heuristic_diagonal([Row|UpperBoard], LowerRow, I, J, NewJ, -1,
+                     Player, OpponentPlayer, ValLeftDiagonal),
 
   % Updating accumulator and checking if winning position
   ((ValRow =:= +1.0Inf, NewValAcc is ValRow);
@@ -118,7 +121,8 @@ heuristic_column(UpperBoard, LowerRow, I, J, Player, OpponentPlayer, ValColumn) 
 
 % Heuristic for the contiguous diagonal (left or right - defined by
 % Direction together with CheckJ)
-heuristic_diagonal(UpperBoard, LowerRow, I, J, CheckJ, Direction, Player, OpponentPlayer, ValDiagonal) :-
+heuristic_diagonal(UpperBoard, LowerRow, I, J, CheckJ, Direction,
+                   Player, OpponentPlayer, ValDiagonal) :-
   ((I is 0,
   StartBlocked is 1,
   contiguous_diagonal(UpperBoard, J, Player, 0, DiscsInLine, EndBlocked, Direction));

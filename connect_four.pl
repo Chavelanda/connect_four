@@ -145,9 +145,14 @@ end_of_game(LowerRow, [Row|UpperBoard], I, J, _, Player, GameEnded) :-
   contiguous_diagonal([Row|UpperBoard], J, Player, 0, DiscsInLeftDiagonal, _, -1)),
 
   % We keep the longest contiguous line
-  ((DiscsInColumn > DiscsInRow, Max1 is DiscsInColumn); Max1 is DiscsInRow),
-  ((DiscsInRightDiagonal > Max1, Max2 is DiscsInRightDiagonal); Max2 is Max1),
-  ((DiscsInLeftDiagonal > Max2, DiscsInLine is DiscsInLeftDiagonal); DiscsInLine is Max2),
+  ((DiscsInColumn > DiscsInRow, Max1 is DiscsInColumn);
+  Max1 is DiscsInRow),
+
+  ((DiscsInRightDiagonal > Max1, Max2 is DiscsInRightDiagonal);
+  Max2 is Max1),
+
+  ((DiscsInLeftDiagonal > Max2, DiscsInLine is DiscsInLeftDiagonal);
+  DiscsInLine is Max2),
 
   end_of_game(LowerRow, [Row|UpperBoard], I, NewJ, DiscsInLine, Player, GameEnded).
 
@@ -192,10 +197,12 @@ contiguous_column([Row|_], J, Player, DiscsInLine, DiscsInLine, 1) :-
 contiguous_column([Row|_], J, _, DiscsInLine, DiscsInLine, 0) :-
   nth0(J, Row, 0).
 
-contiguous_column([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked) :-
+contiguous_column([Row|UpperBoard], J, Player,
+                  DiscsInLineAcc, DiscsInLine, EndBlocked) :-
   nth0(J, Row, Player),
   NewDiscsInLineAcc is DiscsInLineAcc + 1,
-  contiguous_column(UpperBoard, J, Player, NewDiscsInLineAcc, DiscsInLine, EndBlocked).
+  contiguous_column(UpperBoard, J, Player, NewDiscsInLineAcc,
+                    DiscsInLine, EndBlocked).
 
 
 
@@ -218,8 +225,10 @@ contiguous_diagonal([Row|_], J, _, DiscsInLine, DiscsInLine, 0, _) :-
   nth0(J, Row, 0).
 
 % Direction stands for the direction of the diagonal (right=+1 or left=-1)
-contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLineAcc, DiscsInLine, EndBlocked, Direction) :-
+contiguous_diagonal([Row|UpperBoard], J, Player, DiscsInLineAcc,
+                    DiscsInLine, EndBlocked, Direction) :-
   nth0(J, Row, Player),
   NewDiscsInLineAcc is DiscsInLineAcc + 1,
   NewJ is J + Direction,
-  contiguous_diagonal(UpperBoard, NewJ, Player, NewDiscsInLineAcc, DiscsInLine, EndBlocked, Direction).
+  contiguous_diagonal(UpperBoard, NewJ, Player, NewDiscsInLineAcc,
+                      DiscsInLine, EndBlocked, Direction).
