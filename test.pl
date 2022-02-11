@@ -1,7 +1,5 @@
 :- consult(alphabeta).
 
-:-  set_prolog_flag(stack_limit, 2_147_483_648).
-
 test_heuristic() :-
   staticval([[1,0,0,0,0,-1,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]], Case1),
   Case1 is -8,
