@@ -12,9 +12,9 @@ game() :-
 % Do we know if the game is over?
 game(Pos, Player, 0) :-
   draw_board(Pos, 0),
-  write(' 0123456'),
-  write('\n'),
-  end_of_game([], Pos, 0, 0, 0, Player, GameEnded),
+  write('  0123456\n\n'),
+  OpponentPlayer is Player * -1,
+  end_of_game([], Pos, 0, 0, 0, OpponentPlayer, GameEnded),
   ((GameEnded is 1, game(Pos, 0, 1));
   (GameEnded is 0, game(Pos, Player, 1))).
 
@@ -37,7 +37,7 @@ game(Pos, 1, 1) :-
 
 % CPU plays
 game(Pos, -1, 1) :-
-  write('ALex, the world\'s best player, has done its move\n'),
+  write('Alex, the world\'s best player, has done its move\n'),
   min_to_move(Pos),
   alphabeta(Pos, -1.0Inf, 1.0Inf, NewPos, _, 0, 4),
   game(NewPos, 1, 0).
@@ -45,23 +45,25 @@ game(Pos, -1, 1) :-
 
 
 draw_board([Row|[]], _) :-
-  write('5'),
-  draw_row(Row).
+  write('5|'),
+  draw_row(Row),
+  write('|\n').
 
 draw_board([Row|UpperBoard], I) :-
   NewI is I + 1,
   draw_board(UpperBoard, NewI),
   write(I),
-  draw_row(Row).
+  write('|'),
+  draw_row(Row),
+  write('|\n').
 
 
 
-draw_row([]) :-
-  write('\n').
+draw_row([]).
 
 draw_row([Disc|Row]) :-
   ((Disc is 1, write('X'));
-  (Disc is 0, write('-'));
+  (Disc is 0, write('_'));
   (Disc is -1, write('O'))),
   draw_row(Row).
 
@@ -69,6 +71,7 @@ draw_row([Disc|Row]) :-
 
 
 check_valid_move(Pos, Column) :-
+  integer(Column),
   Column >= 0,
   Column < 7,
   matrix(Pos, 5, Column, Disc),
