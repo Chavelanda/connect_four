@@ -47,7 +47,7 @@ game(Pos, -1, 1) :-
 
 
 
-% Function to draw the Connect Four board
+% Predicate to draw the Connect Four board
 draw_board([Row|[]], _) :-
   write('5|'),
   draw_row(Row),
@@ -64,7 +64,7 @@ draw_board([Row|UpperBoard], I) :-
 
 
 
-% Function to draw a Connect Four row
+% Predicate to draw a Connect Four row
 draw_row([]).
 
 draw_row([Disc|Row]) :-
@@ -76,7 +76,7 @@ draw_row([Disc|Row]) :-
 
 
 
-% Functions that checks if the input of the human player is valid
+% Predicates that checks if the input of the human player is valid
 check_valid_move(Pos, Column) :-
   integer(Column),
   Column >= 0,
@@ -92,7 +92,7 @@ check_valid_move(Pos, _) :-
 
 
 
-% Function that relates a position and a column in which the new
+% Predicate that relates a position and a column in which the new
 % disc must be inserted to the new position
 generate_pos(Pos, Column, NewPos) :-
   generate_pos([], Pos, 0, Column, NewPos).
